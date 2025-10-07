@@ -13,3 +13,4 @@ pytest
 pytest-django
 drf-spectacular
 openai >= 1.0.0
+pre-commit

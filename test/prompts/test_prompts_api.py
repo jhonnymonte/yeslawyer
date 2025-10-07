@@ -1,8 +1,8 @@
-from django.urls import reverse
-from rest_framework.test import APITestCase
+from unittest.mock import patch
+
 from django.contrib.auth.models import User
 from rest_framework import status
-from unittest.mock import patch
+from rest_framework.test import APITestCase
 
 
 class PromptAPITests(APITestCase):
@@ -12,7 +12,11 @@ class PromptAPITests(APITestCase):
         self.user = User.objects.create_user(username=self.username, password=self.password)
 
         # obtain JWT token
-        resp = self.client.post("/api/auth/login/", {"username": self.username, "password": self.password}, format="json")
+        resp = self.client.post(
+            "/api/auth/login/",
+            {"username": self.username, "password": self.password},
+            format="json",
+        )
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.token = resp.data["access"]
         self.auth_headers = {"HTTP_AUTHORIZATION": f"Bearer {self.token}"}
@@ -20,7 +24,9 @@ class PromptAPITests(APITestCase):
     @patch("prompts.services.llm_provider.LLMProvider.generate", return_value="ok")
     @patch("prompts.services.embedding_index.embedding_index.add", return_value=None)
     def test_create_prompt(self, _add, _gen):
-        resp = self.client.post("/api/prompts", {"prompt": "hola"}, format="json", **self.auth_headers)
+        resp = self.client.post(
+            "/api/prompts", {"prompt": "hola"}, format="json", **self.auth_headers
+        )
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
         self.assertIn("id", resp.data)
 
@@ -37,9 +43,11 @@ class PromptAPITests(APITestCase):
     @patch("prompts.services.llm_provider.LLMProvider.generate", return_value="ok")
     def test_throttling_post(self, _gen):
         # First request should pass
-        r1 = self.client.post("/api/prompts", {"prompt": "hola"}, format="json", **self.auth_headers)
+        r1 = self.client.post(
+            "/api/prompts", {"prompt": "hola"}, format="json", **self.auth_headers
+        )
         # Immediate second request likely hits 1/sec limit
-        r2 = self.client.post("/api/prompts", {"prompt": "hola"}, format="json", **self.auth_headers)
+        r2 = self.client.post(
+            "/api/prompts", {"prompt": "hola"}, format="json", **self.auth_headers
+        )
         self.assertIn(r2.status_code, (status.HTTP_201_CREATED, status.HTTP_429_TOO_MANY_REQUESTS))
-
-

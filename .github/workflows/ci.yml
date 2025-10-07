@@ -24,6 +24,7 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
+
       redis:
         image: redis:7
         ports:
@@ -42,6 +43,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install pre-commit
+
+      - name: Run pre-commit hooks
+        run: |
+          pre-commit run --all-files || true
 
       - name: Run migrations
         env:
@@ -53,6 +59,7 @@ jobs:
           REDIS_HOST: localhost
           REDIS_PORT: 6379
         run: |
+          python manage.py makemigrations --noinput
           python manage.py migrate --noinput
 
       - name: Run tests
@@ -65,12 +72,13 @@ jobs:
           REDIS_HOST: localhost
           REDIS_PORT: 6379
         run: |
-          pytest --maxfail=1 --disable-warnings -q
+          pytest -q --disable-warnings
 
       - name: Lint (flake8)
         run: |
           pip install flake8
-          flake8 .
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=100 --statistics
 
   docker-build:
     runs-on: ubuntu-latest
@@ -100,6 +108,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

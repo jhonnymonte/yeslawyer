@@ -1,25 +1,27 @@
 import logging
-from django.db import transaction
-from rest_framework import status,permissions
-from rest_framework.response import Response
-from rest_framework.views import APIView
-from .models import Prompt
-from .serializers import PromptCreateSerializer, PromptResponseSerializer
-from .services.llm_provider import LLMProvider
-from .services.embedding_index import embedding_index
+
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
-from drf_spectacular.utils import extend_schema, OpenApiExample, OpenApiParameter
+from django.db import transaction
 from drf_spectacular.types import OpenApiTypes
-from rest_framework.throttling import ScopedRateThrottle
+from drf_spectacular.utils import OpenApiExample, OpenApiParameter, extend_schema
+from rest_framework import permissions, status
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from .models import Prompt
+from .serializers import PromptCreateSerializer, PromptResponseSerializer
+from .services.embedding_index import embedding_index
+from .services.llm_provider import LLMProvider
 from .throttles import BurstPerSecondThrottle, SustainedPerMinuteThrottle
 
 log = logging.getLogger("prompts")
 
+
 class CreatePromptView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     throttle_classes = (BurstPerSecondThrottle, SustainedPerMinuteThrottle)
-    
+
     @extend_schema(
         request=PromptCreateSerializer,
         responses=PromptResponseSerializer,
@@ -35,35 +37,35 @@ class CreatePromptView(APIView):
     def post(self, request):
         ser = PromptCreateSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
-        
+
         prompt_text = ser.validated_data["prompt"]
         use_ws = ser.validated_data.get("websocket", False)
-        
+
         llm = LLMProvider()
         response_text = llm.generate(prompt_text)
-        
+
         with transaction.atomic():
             obj = Prompt.objects.create(
-                user = request.user, prompt = prompt_text, response= response_text
+                user=request.user, prompt=prompt_text, response=response_text
             )
             embedding_index.add(obj.id, obj.prompt)
-            
+
         data = PromptResponseSerializer(obj).data
-        
+
         if use_ws:
             try:
                 channel_layer = get_channel_layer()
                 group_name = f"user_{request.user.id}"
                 async_to_sync(channel_layer.group_send)(
                     group_name,
-                    {"type": "prompt.message", "event":"prompt_completed", "data":data},
+                    {"type": "prompt.message", "event": "prompt_completed", "data": data},
                 )
             except Exception as e:
                 log.exception("websocket_send_failed: %s", e)
-        
-        log.info("prompt_created", extra={"user_id": request.user.id, "prompt_id":obj.id})
+
+        log.info("prompt_created", extra={"user_id": request.user.id, "prompt_id": obj.id})
         return Response(data, status=status.HTTP_201_CREATED)
-        
+
 
 class SimilarPromptsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -114,5 +116,3 @@ class SimilarPromptsView(APIView):
         qs = Prompt.objects.filter(id__in=ids).order_by("-created_at")
         data = PromptResponseSerializer(qs, many=True).data
         return Response({"query": query, "results": data}, status=200)
-        
-        

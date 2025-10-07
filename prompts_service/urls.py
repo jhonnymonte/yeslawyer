@@ -14,15 +14,18 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-from django.contrib import admin
-from django.urls import path, include
-from django_prometheus import exports
-from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
-from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
-from rest_framework.permissions import AllowAny
-from rest_framework.throttling import AnonRateThrottle
+from django.contrib import admin
+from django.urls import include, path
+from django_prometheus import exports
+from drf_spectacular.views import (
+    SpectacularAPIView,
+    SpectacularRedocView,
+    SpectacularSwaggerView,
+)
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
+from rest_framework.permissions import AllowAny
+
 
 @api_view(["GET"])
 @permission_classes([AllowAny])
@@ -31,12 +34,12 @@ def schema_view(request):
     view = SpectacularAPIView.as_view()
     return view(request)
 
+
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/auth/", include("users.urls")),
     path("api/", include("prompts.urls")),
     path("metrics/", exports.ExportToDjangoView, name="metrics"),
-
     path(
         "schema/",
         SpectacularAPIView.as_view(
@@ -46,14 +49,12 @@ urlpatterns = [
         ),
         name="schema",
     ),
-
     # Swagger UI
     path(
         "docs/",
         SpectacularSwaggerView.as_view(url_name="schema"),
         name="swagger-ui",
     ),
-
     path(
         "redoc/",
         SpectacularRedocView.as_view(url_name="schema"),
