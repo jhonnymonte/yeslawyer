@@ -42,3 +42,4 @@ class PromptAPITests(APITestCase):
         r2 = self.client.post("/api/prompts", {"prompt": "hola"}, format="json", **self.auth_headers)
         self.assertIn(r2.status_code, (status.HTTP_201_CREATED, status.HTTP_429_TOO_MANY_REQUESTS))
 
+
