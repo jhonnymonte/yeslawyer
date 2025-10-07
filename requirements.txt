@@ -1,0 +1,15 @@
+django
+djangorestframework
+djangorestframework-simplejwt
+django-cors-headers
+channels
+channels-redis
+daphne
+sentence-transformers
+faiss-cpu
+psycopg2-binary
+django-prometheus
+pytest
+pytest-django
+drf-spectacular
+openai >= 1.0.0

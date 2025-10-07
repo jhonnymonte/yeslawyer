@@ -1,0 +1,19 @@
+version: "3.9"
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: promptsdb
+      POSTGRES_USER: prompts
+      POSTGRES_PASSWORD: prompts
+    ports: ["5432:5432"]
+  redis:
+    image: redis:7
+  web:
+    build: .
+    command: sh -c "python manage.py migrate && daphne -b 0.0.0.0 -p 8000 prompts_service.asgi:application"
+    volumes: [".:/app"]
+    ports: ["8000:8000"]
+    depends_on: [db, redis]
+    environment:
+      DJANGO_SETTINGS_MODULE: prompts_service.settings
